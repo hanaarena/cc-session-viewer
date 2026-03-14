@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 
 interface CodeBlockProps {
   content: string
@@ -10,11 +10,26 @@ export function CodeBlock({ content, maxLines = 500, className = "" }: CodeBlock
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const lines = content.split("\n")
-  const truncated = !expanded && lines.length > maxLines
-  const displayContent = truncated
-    ? lines.slice(0, maxLines).join("\n")
-    : content
+  const lineCount = useMemo(() => {
+    let count = 1
+    for (let i = 0; i < content.length; i++) {
+      if (content[i] === "\n") count++
+    }
+    return count
+  }, [content])
+
+  const truncated = !expanded && lineCount > maxLines
+  const displayContent = useMemo(() => {
+    if (!truncated) return content
+    let newlinesSeen = 0
+    for (let i = 0; i < content.length; i++) {
+      if (content[i] === "\n") {
+        newlinesSeen++
+        if (newlinesSeen === maxLines) return content.slice(0, i)
+      }
+    }
+    return content
+  }, [content, truncated, maxLines])
 
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(content)
@@ -38,7 +53,7 @@ export function CodeBlock({ content, maxLines = 500, className = "" }: CodeBlock
           onClick={() => setExpanded(true)}
           className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
         >
-          Show all {lines.length} lines
+          Show all {lineCount} lines
         </button>
       )}
     </div>
