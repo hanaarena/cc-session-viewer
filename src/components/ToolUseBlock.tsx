@@ -77,8 +77,8 @@ export function ToolUseBlock({ name, input, result }: ToolUseBlockProps) {
     ""
 
   return (
-    <details className="my-2 rounded-lg border border-amber-200 dark:border-amber-800/40">
-      <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-amber-700 select-none dark:text-amber-400">
+    <details className="group/tool my-2 rounded-lg border border-amber-200 dark:border-amber-800/40">
+      <summary className="sticky top-0 z-10 flex cursor-pointer items-center gap-2 rounded-t-lg bg-white/95 px-3 py-2 text-xs font-medium text-amber-700 backdrop-blur-sm select-none group-open/tool:border-b group-open/tool:border-amber-200 dark:bg-gray-800/95 dark:text-amber-400 dark:group-open/tool:border-amber-800/40">
         <ToolIcon name={name} />
         <span className="font-semibold">{name}</span>
         {summary && (
@@ -93,7 +93,7 @@ export function ToolUseBlock({ name, input, result }: ToolUseBlockProps) {
         )}
       </summary>
 
-      <div className="space-y-0 border-t border-amber-200 dark:border-amber-800/40">
+      <div className="max-h-[70vh] space-y-0 overflow-y-auto">
         {/* Input */}
         <div className="bg-amber-50/50 p-3 dark:bg-amber-950/10">
           <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-amber-600/60 dark:text-amber-500/50">

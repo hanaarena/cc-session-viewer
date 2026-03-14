@@ -9,8 +9,8 @@ export function ThinkingBlock({ text }: ThinkingBlockProps) {
     : "Thinking..."
 
   return (
-    <details className="my-2 rounded-lg border border-purple-200 dark:border-purple-800/50">
-      <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-purple-600 select-none dark:text-purple-400">
+    <details className="group/thinking my-2 rounded-lg border border-purple-200 dark:border-purple-800/50">
+      <summary className="sticky top-0 z-10 flex cursor-pointer items-center gap-2 rounded-t-lg bg-white/95 px-3 py-2 text-xs font-medium text-purple-600 backdrop-blur-sm select-none group-open/thinking:border-b group-open/thinking:border-purple-200 dark:bg-gray-800/95 dark:text-purple-400 dark:group-open/thinking:border-purple-800/50">
         <svg
           width="14"
           height="14"
@@ -28,7 +28,7 @@ export function ThinkingBlock({ text }: ThinkingBlockProps) {
         </svg>
         {label}
       </summary>
-      <div className="border-t border-purple-200 bg-purple-50/50 p-3 dark:border-purple-800/50 dark:bg-purple-950/20">
+      <div className="max-h-[70vh] overflow-y-auto bg-purple-50/50 p-3 dark:bg-purple-950/20">
         <p className="whitespace-pre-wrap text-xs leading-relaxed text-purple-900 dark:text-purple-200">
           {text}
         </p>

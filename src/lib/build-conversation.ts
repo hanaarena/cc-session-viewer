@@ -108,13 +108,17 @@ export function buildConversation(
     } else if (isUserRecord(record)) {
       // Skip user messages that are purely tool results (they're paired with assistant turns)
       if (Array.isArray(record.message.content)) continue
+
+      const text =
+        typeof record.message.content === "string"
+          ? record.message.content
+          : ""
+
       // Skip meta-only messages with no meaningful text
-      if (
-        record.isMeta &&
-        typeof record.message.content === "string" &&
-        !record.message.content.trim()
-      )
-        continue
+      if (record.isMeta && !text.trim()) continue
+
+      // Skip noisy system injections
+      if (isNoisyUserMessage(text)) continue
 
       turns.push({
         id: record.uuid,
@@ -123,6 +127,9 @@ export function buildConversation(
         record,
       })
     } else if (isSystemRecord(record)) {
+      // Skip noisy system records
+      if (isNoisySystemRecord(record)) continue
+
       turns.push({
         id: record.uuid,
         role: "system",
@@ -169,4 +176,26 @@ export function buildConversation(
     turns,
     fileName,
   }
+}
+
+const NOISY_USER_PATTERNS = [
+  /^<local-command-caveat>[\s\S]*<\/local-command-caveat>\s*$/,
+  /^<local-command-stdout>\s*<\/local-command-stdout>\s*$/,
+  /^<system-reminder>[\s\S]*<\/system-reminder>\s*$/,
+]
+
+function isNoisyUserMessage(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return true
+  return NOISY_USER_PATTERNS.some((p) => p.test(trimmed))
+}
+
+const NOISY_SYSTEM_SUBTYPES = new Set([
+  "turn_duration",
+])
+
+function isNoisySystemRecord(record: SystemRecord): boolean {
+  if (record.subtype && NOISY_SYSTEM_SUBTYPES.has(record.subtype)) return true
+  if (!record.content?.trim()) return true
+  return false
 }
