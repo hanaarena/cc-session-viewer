@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useFileDrop } from "@/hooks/use-file-drop"
 import { useSessions } from "@/hooks/use-sessions"
+import { useSearch } from "@/hooks/use-search"
 import { DropZone } from "@/components/DropZone"
 import { SessionList } from "@/components/SessionList"
 import { MessageList } from "@/components/MessageList"
+import type { MessageListHandle } from "@/components/MessageList"
 import { SessionMeta } from "@/components/SessionMeta"
 
 type View = "landing" | "loading" | "list" | "viewer"
@@ -119,15 +121,62 @@ function App() {
   // Viewer
   const activeSession = sessions[activeIndex]
   if (view === "viewer" && activeSession) {
-    return (
-      <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-950">
-        <SessionMeta session={activeSession} onBack={handleBack} />
-        <MessageList session={activeSession} />
-      </div>
-    )
+    return <SessionViewer session={activeSession} onBack={handleBack} />
   }
 
   return null
+}
+
+function SessionViewer({
+  session,
+  onBack,
+}: {
+  session: import("@/types/session").ParsedSession
+  onBack: () => void
+}) {
+  const messageListRef = useRef<MessageListHandle>(null)
+  const search = useSearch(session)
+
+  // Scroll to active match when it changes
+  const scrollToActiveMatch = useCallback(() => {
+    const match = search.matches[search.activeMatchIndex]
+    if (match) {
+      messageListRef.current?.scrollToIndex(match.turnIndex)
+    }
+  }, [search.matches, search.activeMatchIndex])
+
+  useEffect(() => {
+    scrollToActiveMatch()
+  }, [scrollToActiveMatch])
+
+  const handleSelectMatch = (index: number) => {
+    search.setActiveMatchIndex(index)
+  }
+
+  const handleNextMatch = () => {
+    search.nextMatch()
+  }
+
+  const handlePrevMatch = () => {
+    search.prevMatch()
+  }
+
+  return (
+    <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-950">
+      <SessionMeta
+        session={session}
+        onBack={onBack}
+        query={search.query}
+        onQueryChange={search.setQuery}
+        matches={search.matches}
+        activeMatchIndex={search.activeMatchIndex}
+        onSelectMatch={handleSelectMatch}
+        onNextMatch={handleNextMatch}
+        onPrevMatch={handlePrevMatch}
+      />
+      <MessageList ref={messageListRef} session={session} />
+    </div>
+  )
 }
 
 export default App
