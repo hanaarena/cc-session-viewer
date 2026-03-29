@@ -80,7 +80,24 @@ interface AskQuestion {
   multiSelect?: boolean
 }
 
-function AskUserQuestionInput({ questions }: { questions: AskQuestion[] }) {
+function parseSelectedAnswers(output: string): Map<string, string> {
+  const answers = new Map<string, string>()
+  // Match patterns like "question"="answer"
+  const regex = /"([^"]+)"="([^"]+)"/g
+  let match
+  while ((match = regex.exec(output)) !== null) {
+    answers.set(match[1], match[2])
+  }
+  return answers
+}
+
+function AskUserQuestionInput({
+  questions,
+  selectedAnswers,
+}: {
+  questions: AskQuestion[]
+  selectedAnswers: Map<string, string>
+}) {
   return (
     <div className="space-y-3">
       {questions.map((q, i) => (
@@ -95,26 +112,62 @@ function AskUserQuestionInput({ questions }: { questions: AskQuestion[] }) {
           </div>
           {q.options && q.options.length > 0 && (
             <div className="space-y-1">
-              {q.options.map((opt, j) => (
-                <div
-                  key={j}
-                  className="flex items-start gap-2 rounded-md border border-amber-200/60 bg-white/60 px-2.5 py-1.5 dark:border-amber-800/30 dark:bg-gray-800/40"
-                >
-                  <span className="mt-0.5 text-xs text-amber-500 dark:text-amber-600">
-                    {q.multiSelect ? "☐" : "○"}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                      {opt.label}
-                    </div>
-                    {opt.description && (
-                      <div className="text-[11px] text-gray-500 dark:text-gray-500">
-                        {opt.description}
+              {q.options.map((opt, j) => {
+                const answer = selectedAnswers.get(q.question)
+                const isSelected =
+                  answer != null &&
+                  (answer === opt.label ||
+                    answer === opt.description ||
+                    opt.label.toLowerCase().includes(answer.toLowerCase()))
+                return (
+                  <div
+                    key={j}
+                    className={`flex items-start gap-2 rounded-md border px-2.5 py-1.5 ${
+                      isSelected
+                        ? "border-green-400 bg-green-50/80 ring-1 ring-green-300 dark:border-green-600 dark:bg-green-950/30 dark:ring-green-800"
+                        : "border-amber-200/60 bg-white/60 dark:border-amber-800/30 dark:bg-gray-800/40"
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 text-xs ${
+                        isSelected
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-amber-500 dark:text-amber-600"
+                      }`}
+                    >
+                      {isSelected
+                        ? q.multiSelect
+                          ? "☑"
+                          : "●"
+                        : q.multiSelect
+                          ? "☐"
+                          : "○"}
+                    </span>
+                    <div className="min-w-0">
+                      <div
+                        className={`text-xs font-medium ${
+                          isSelected
+                            ? "text-green-800 dark:text-green-300"
+                            : "text-gray-700 dark:text-gray-300"
+                        }`}
+                      >
+                        {opt.label}
                       </div>
-                    )}
+                      {opt.description && (
+                        <div
+                          className={`text-[11px] ${
+                            isSelected
+                              ? "text-green-600/80 dark:text-green-400/70"
+                              : "text-gray-500 dark:text-gray-500"
+                          }`}
+                        >
+                          {opt.description}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -156,7 +209,10 @@ export function ToolUseBlock({ name, input, result }: ToolUseBlockProps) {
             Input
           </div>
           {name === "AskUserQuestion" && Array.isArray(input.questions) ? (
-            <AskUserQuestionInput questions={input.questions as AskQuestion[]} />
+            <AskUserQuestionInput
+              questions={input.questions as AskQuestion[]}
+              selectedAnswers={parseSelectedAnswers(String(resultContent))}
+            />
           ) : (
             <CodeBlock content={formatInput(name, input)} maxLines={30} />
           )}
