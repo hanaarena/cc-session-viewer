@@ -15,6 +15,7 @@ const TOOL_ICONS: Record<string, string> = {
   Glob: "M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z",
   Grep: "M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z",
   Agent: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M12 7a4 4 0 1 0-8 0 4 4 0 0 0 8 0zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+  AskUserQuestion: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
 }
 
 function ToolIcon({ name }: { name: string }) {
@@ -49,6 +50,11 @@ function getToolSummary(name: string, input: Record<string, unknown>): string {
   if (name === "Glob" && input.pattern) return String(input.pattern)
   if (name === "Grep" && input.pattern) return String(input.pattern)
   if (name === "Agent" && input.description) return String(input.description)
+  if (name === "AskUserQuestion" && input.questions) {
+    const questions = input.questions as { question: string }[]
+    if (questions.length === 1) return questions[0].question
+    return `${questions.length} questions`
+  }
   return ""
 }
 
@@ -65,6 +71,56 @@ function formatInput(name: string, input: Record<string, unknown>): string {
     return parts.join("\n")
   }
   return JSON.stringify(input, null, 2)
+}
+
+interface AskQuestion {
+  question: string
+  header?: string
+  options?: { label: string; description?: string }[]
+  multiSelect?: boolean
+}
+
+function AskUserQuestionInput({ questions }: { questions: AskQuestion[] }) {
+  return (
+    <div className="space-y-3">
+      {questions.map((q, i) => (
+        <div key={i}>
+          {q.header && (
+            <div className="mb-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+              {q.header}
+            </div>
+          )}
+          <div className="mb-1.5 text-sm text-gray-800 dark:text-gray-200">
+            {q.question}
+          </div>
+          {q.options && q.options.length > 0 && (
+            <div className="space-y-1">
+              {q.options.map((opt, j) => (
+                <div
+                  key={j}
+                  className="flex items-start gap-2 rounded-md border border-amber-200/60 bg-white/60 px-2.5 py-1.5 dark:border-amber-800/30 dark:bg-gray-800/40"
+                >
+                  <span className="mt-0.5 text-xs text-amber-500 dark:text-amber-600">
+                    {q.multiSelect ? "☐" : "○"}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {opt.label}
+                    </div>
+                    {opt.description && (
+                      <div className="text-[11px] text-gray-500 dark:text-gray-500">
+                        {opt.description}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function ToolUseBlock({ name, input, result }: ToolUseBlockProps) {
@@ -99,7 +155,11 @@ export function ToolUseBlock({ name, input, result }: ToolUseBlockProps) {
           <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-amber-600/60 dark:text-amber-500/50">
             Input
           </div>
-          <CodeBlock content={formatInput(name, input)} maxLines={30} />
+          {name === "AskUserQuestion" && Array.isArray(input.questions) ? (
+            <AskUserQuestionInput questions={input.questions as AskQuestion[]} />
+          ) : (
+            <CodeBlock content={formatInput(name, input)} maxLines={30} />
+          )}
         </div>
 
         {/* Result */}
