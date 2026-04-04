@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown"
 import type { Components } from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 const components: Components = {
   h1: ({ children }) => (
@@ -90,7 +91,7 @@ interface MarkdownProps {
 export function Markdown({ content, className = "" }: MarkdownProps) {
   return (
     <div className={`min-w-0 ${className}`}>
-      <ReactMarkdown components={components}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>{content}</ReactMarkdown>
     </div>
   )
 }
