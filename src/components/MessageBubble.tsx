@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import type {
   ConversationTurn,
   UserRecord,
@@ -178,6 +179,56 @@ function SystemBubble({ record }: { record: SystemRecord }) {
   );
 }
 
+/** Truncate text at a paragraph/line boundary near the midpoint. */
+function truncateAtBreak(text: string): string {
+  const mid = Math.floor(text.length / 2);
+  // Look for a double-newline (paragraph break) near the midpoint
+  const paraBreak = text.indexOf("\n\n", mid);
+  if (paraBreak !== -1 && paraBreak < mid + 200) return text.slice(0, paraBreak);
+  // Fall back to a single newline
+  const lineBreak = text.indexOf("\n", mid);
+  if (lineBreak !== -1 && lineBreak < mid + 200) return text.slice(0, lineBreak);
+  return text.slice(0, mid);
+}
+
+const COLLAPSE_THRESHOLD = 800;
+
+function TextBlock({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > COLLAPSE_THRESHOLD;
+  const truncated = useMemo(
+    () => (isLong ? truncateAtBreak(text) : text),
+    [text, isLong],
+  );
+
+  if (!isLong || expanded) {
+    return (
+      <Markdown
+        content={text}
+        className="text-gray-800 dark:text-gray-200"
+      />
+    );
+  }
+
+  return (
+    <div className="relative">
+      <Markdown
+        content={truncated}
+        className="text-gray-800 dark:text-gray-200"
+      />
+      {/* Fade mask */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white dark:from-gray-800" />
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="relative z-10 mt-1 w-full py-1.5 text-center text-xs font-medium text-gray-500 transition-colors hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+      >
+        Show more
+      </button>
+    </div>
+  );
+}
+
 function ContentBlock({
   block,
   toolResults,
@@ -186,12 +237,7 @@ function ContentBlock({
   toolResults?: ConversationTurn["toolResults"];
 }) {
   if (block.type === "text") {
-    return (
-      <Markdown
-        content={block.text}
-        className="text-gray-800 dark:text-gray-200"
-      />
-    );
+    return <TextBlock text={block.text} />;
   }
 
   if (block.type === "thinking") {

@@ -34,8 +34,9 @@ function estimateTurnHeight(turn: ConversationTurn): number {
 
   for (const block of blocks) {
     if (block.type === "text") {
-      // ~20px per 80-char line, rough estimate
-      h += Math.max(24, Math.ceil(block.text.length / 80) * 20)
+      // Long text blocks start collapsed (half content + "show more" button)
+      const len = block.text.length > 800 ? block.text.length / 2 : block.text.length
+      h += Math.max(24, Math.ceil(len / 80) * 20)
     } else if (block.type === "thinking") {
       h += 36 // collapsed summary height
     } else if (block.type === "tool_use") {
