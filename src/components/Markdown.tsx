@@ -1,6 +1,6 @@
-import ReactMarkdown from "react-markdown"
-import type { Components } from "react-markdown"
-import remarkGfm from "remark-gfm"
+import ReactMarkdown from "react-markdown";
+import type { Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const components: Components = {
   h1: ({ children }) => (
@@ -19,7 +19,9 @@ const components: Components = {
     </h3>
   ),
   p: ({ children }) => (
-    <p className="my-1.5 text-sm leading-relaxed first:mt-0 last:mb-0">{children}</p>
+    <p className="my-1.5 text-sm leading-relaxed first:mt-0 last:mb-0 overflow-hidden">
+      {children}
+    </p>
   ),
   ul: ({ children }) => (
     <ul className="my-1.5 ml-4 list-disc space-y-0.5 text-sm">{children}</ul>
@@ -35,21 +37,23 @@ const components: Components = {
   ),
   em: ({ children }) => <em className="italic">{children}</em>,
   code: ({ className, children }) => {
-    const isBlock = className?.includes("language-")
+    const isBlock = className?.includes("language-");
     if (isBlock) {
       return (
         <code className="block overflow-x-auto rounded-md bg-gray-800 p-3 text-xs leading-relaxed text-gray-200 dark:bg-gray-900">
           {children}
         </code>
-      )
+      );
     }
     return (
       <code className="rounded bg-gray-200 px-1 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">
         {children}
       </code>
-    )
+    );
   },
-  pre: ({ children }) => <pre className="my-2 first:mt-0 last:mb-0">{children}</pre>,
+  pre: ({ children }) => (
+    <pre className="my-2 first:mt-0 last:mb-0">{children}</pre>
+  ),
   blockquote: ({ children }) => (
     <blockquote className="my-2 border-l-2 border-gray-300 pl-3 italic text-gray-600 dark:border-gray-600 dark:text-gray-400">
       {children}
@@ -81,17 +85,19 @@ const components: Components = {
       {children}
     </a>
   ),
-}
+};
 
 interface MarkdownProps {
-  content: string
-  className?: string
+  content: string;
+  className?: string;
 }
 
 export function Markdown({ content, className = "" }: MarkdownProps) {
   return (
     <div className={`min-w-0 ${className}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        {content}
+      </ReactMarkdown>
     </div>
-  )
+  );
 }
