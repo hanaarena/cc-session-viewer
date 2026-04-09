@@ -44,16 +44,33 @@ export function buildConversation(
 
   // Deduplicate assistant records by requestId (keep last occurrence — most complete)
   const seenRequestIds = new Map<string, number>()
+  const thinkingByRequestId = new Map<string, AssistantRecord["message"]["content"]>()
   for (let i = 0; i < conversationRecords.length; i++) {
     const r = conversationRecords[i]
     if (isAssistantRecord(r) && r.requestId) {
       seenRequestIds.set(r.requestId, i)
+      // Collect thinking blocks from all records with the same requestId
+      const thinkingBlocks = r.message.content.filter(
+        (c) => c.type === "thinking",
+      )
+      if (thinkingBlocks.length > 0) {
+        thinkingByRequestId.set(r.requestId, thinkingBlocks)
+      }
     }
   }
 
   const deduped = conversationRecords.filter((r, i) => {
     if (isAssistantRecord(r) && r.requestId) {
-      return seenRequestIds.get(r.requestId) === i
+      if (seenRequestIds.get(r.requestId) !== i) return false
+      // Merge thinking blocks into the kept record if it doesn't already have them
+      const hasThinking = r.message.content.some((c) => c.type === "thinking")
+      if (!hasThinking) {
+        const thinking = thinkingByRequestId.get(r.requestId)
+        if (thinking) {
+          r.message.content = [...thinking, ...r.message.content]
+        }
+      }
+      return true
     }
     return true
   })

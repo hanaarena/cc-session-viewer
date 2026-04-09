@@ -124,7 +124,11 @@ function UserBubble({ record }: { record: UserRecord }) {
               </span>
             </div>
           )}
-          <div className={isLong ? "max-h-[70vh] overflow-y-auto px-4 py-3" : "px-4 py-3"}>
+          <div
+            className={
+              isLong ? "max-h-[70vh] overflow-y-auto px-4 py-3" : "px-4 py-3"
+            }
+          >
             <Markdown
               content={parsed.text}
               className="text-blue-900 [&_a]:text-blue-700 [&_a]:decoration-blue-400 [&_code]:bg-blue-200/60 [&_code]:text-blue-800 [&_strong]:text-blue-950 dark:text-blue-100 dark:[&_a]:text-blue-300 dark:[&_code]:bg-blue-800/40 dark:[&_code]:text-blue-200 dark:[&_strong]:text-white"
@@ -184,10 +188,12 @@ function truncateAtBreak(text: string): string {
   const mid = Math.floor(text.length / 2);
   // Look for a double-newline (paragraph break) near the midpoint
   const paraBreak = text.indexOf("\n\n", mid);
-  if (paraBreak !== -1 && paraBreak < mid + 200) return text.slice(0, paraBreak);
+  if (paraBreak !== -1 && paraBreak < mid + 200)
+    return text.slice(0, paraBreak);
   // Fall back to a single newline
   const lineBreak = text.indexOf("\n", mid);
-  if (lineBreak !== -1 && lineBreak < mid + 200) return text.slice(0, lineBreak);
+  if (lineBreak !== -1 && lineBreak < mid + 200)
+    return text.slice(0, lineBreak);
   return text.slice(0, mid);
 }
 
@@ -203,10 +209,7 @@ function TextBlock({ text }: { text: string }) {
 
   if (!isLong || expanded) {
     return (
-      <Markdown
-        content={text}
-        className="text-gray-800 dark:text-gray-200"
-      />
+      <Markdown content={text} className="text-gray-800 dark:text-gray-200" />
     );
   }
 
@@ -221,7 +224,7 @@ function TextBlock({ text }: { text: string }) {
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="relative z-10 mt-1 w-full py-1.5 text-center text-xs font-medium text-gray-500 transition-colors hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+        className="relative z-10 mt-1 w-full py-1.5 cursor-pointer text-center text-xs font-medium text-gray-500 transition-colors hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
       >
         Show more
       </button>
