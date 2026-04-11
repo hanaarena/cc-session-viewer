@@ -134,6 +134,74 @@ function getAnswer(
   return undefined;
 }
 
+function AgentInput({ input }: { input: Record<string, unknown> }) {
+  const subagentType = input.subagent_type
+    ? String(input.subagent_type)
+    : "general-purpose";
+  const description = input.description ? String(input.description) : null;
+  const prompt = input.prompt ? String(input.prompt) : null;
+  const model = input.model ? String(input.model) : null;
+  const isolation = input.isolation ? String(input.isolation) : null;
+  const runInBackground = input.run_in_background === true;
+
+  return (
+    <div className="space-y-2">
+      {/* Metadata badges */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M12 7a4 4 0 1 0-8 0 4 4 0 0 0 8 0z" />
+          </svg>
+          {subagentType}
+        </span>
+        {model && (
+          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+            {model}
+          </span>
+        )}
+        {isolation && (
+          <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300">
+            {isolation}
+          </span>
+        )}
+        {runInBackground && (
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-700/40 dark:text-gray-400">
+            background
+          </span>
+        )}
+      </div>
+
+      {/* Description */}
+      {description && (
+        <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          {description}
+        </div>
+      )}
+
+      {/* Prompt */}
+      {prompt && (
+        <div>
+          <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-purple-500/60 dark:text-purple-400/50">
+            Prompt
+          </div>
+          <div className="whitespace-pre-wrap rounded-md border border-purple-200/60 bg-white/60 px-2.5 py-2 text-xs leading-relaxed text-gray-700 dark:border-purple-800/30 dark:bg-gray-800/40 dark:text-gray-300">
+            {prompt}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AskUserQuestionInput({
   questions,
   parsedOutput,
@@ -292,9 +360,12 @@ export function ToolUseBlock({ name, input, result }: ToolUseBlockProps) {
           {/* Input */}
           <div className="bg-amber-50/50 p-3 dark:bg-amber-950/10">
             <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-amber-600/60 dark:text-amber-500/50">
-              Input
+              {name === "Agent" ? "Sub-Agent" : "Input"}
             </div>
-            {name === "AskUserQuestion" && Array.isArray(input.questions) ? (
+            {name === "Agent" ? (
+              <AgentInput input={input} />
+            ) : name === "AskUserQuestion" &&
+              Array.isArray(input.questions) ? (
               <AskUserQuestionInput
                 questions={input.questions as AskQuestion[]}
                 parsedOutput={parseSelectedAnswers(String(resultContent ?? ""))}
