@@ -11,6 +11,7 @@ import { parseUserContent } from "@/lib/parse-user-content";
 import { Markdown } from "./Markdown";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { ToolUseBlock } from "./ToolUseBlock";
+import { CopyButton } from "./CopyButton";
 
 interface MessageBubbleProps {
   turn: ConversationTurn;
@@ -90,8 +91,13 @@ function UserBubble({ record }: { record: UserRecord }) {
             </div>
             {parsed.taskResult && (
               <details className="group/task mt-2">
-                <summary className="sticky top-0 z-10 cursor-pointer bg-white/95 text-xs text-gray-500 backdrop-blur-sm dark:bg-gray-800/95 dark:text-gray-400">
-                  Show result
+                <summary className="sticky top-0 z-10 flex cursor-pointer items-center justify-between gap-2 bg-white/95 text-xs text-gray-500 backdrop-blur-sm dark:bg-gray-800/95 dark:text-gray-400">
+                  <span>Show result</span>
+                  <CopyButton
+                    content={parsed.taskResult}
+                    label="Copy markdown"
+                    className="hidden group-open/task:inline-flex"
+                  />
                 </summary>
                 <div className="mt-1.5 max-h-[70vh] overflow-y-auto">
                   <Markdown
@@ -209,12 +215,23 @@ function TextBlock({ text }: { text: string }) {
 
   if (!isLong || expanded) {
     return (
-      <Markdown content={text} className="text-gray-800 dark:text-gray-200" />
+      <div className="group relative">
+        <CopyButton
+          content={text}
+          label="Copy markdown"
+          className="absolute right-0 top-0 z-10 opacity-0 group-hover:opacity-100"
+        />
+        <Markdown content={text} className="text-gray-800 dark:text-gray-200" />
+      </div>
     );
   }
 
   return (
-    <div className="relative">
+    <div className="group relative">
+      <CopyButton
+        content={text}
+        className="absolute right-0 top-0 z-10 opacity-0 group-hover:opacity-100"
+      />
       <Markdown
         content={truncated}
         className="text-gray-800 dark:text-gray-200"
