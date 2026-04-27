@@ -1,4 +1,6 @@
 import { useState, useCallback, useMemo } from "react"
+import { DiffView } from "./DiffView"
+import { detectDiff } from "@/lib/detect-diff"
 
 interface CodeBlockProps {
   content: string
@@ -9,6 +11,8 @@ interface CodeBlockProps {
 export function CodeBlock({ content, maxLines = 500, className = "" }: CodeBlockProps) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  const diffMatch = useMemo(() => detectDiff(content), [content])
 
   const lineCount = useMemo(() => {
     let count = 1
@@ -36,6 +40,24 @@ export function CodeBlock({ content, maxLines = 500, className = "" }: CodeBlock
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }, [content])
+
+  if (diffMatch) {
+    return (
+      <div className={className}>
+        {diffMatch.before.trim() && (
+          <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-700 dark:text-gray-300">
+            {diffMatch.before}
+          </pre>
+        )}
+        <DiffView diff={diffMatch.diff} />
+        {diffMatch.after.trim() && (
+          <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-700 dark:text-gray-300">
+            {diffMatch.after}
+          </pre>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className={`group relative ${className}`}>

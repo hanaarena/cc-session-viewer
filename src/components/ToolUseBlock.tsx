@@ -1,6 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { ToolResultContent, UserRecord } from "@/types/session";
 import { CodeBlock } from "./CodeBlock";
+import { DiffView } from "./DiffView";
+import { detectDiff } from "@/lib/detect-diff";
 
 interface ToolUseBlockProps {
   name: string;
@@ -193,10 +195,32 @@ function AgentInput({ input }: { input: Record<string, unknown> }) {
           <div className="mb-1 text-[10px] font-medium uppercase tracking-wider text-purple-500/60 dark:text-purple-400/50">
             Prompt
           </div>
-          <div className="whitespace-pre-wrap rounded-md border border-purple-200/60 bg-white/60 px-2.5 py-2 text-xs leading-relaxed text-gray-700 dark:border-purple-800/30 dark:bg-gray-800/40 dark:text-gray-300">
-            {prompt}
-          </div>
+          <AgentPrompt prompt={prompt} />
         </div>
+      )}
+    </div>
+  );
+}
+
+function AgentPrompt({ prompt }: { prompt: string }) {
+  const diffMatch = useMemo(() => detectDiff(prompt), [prompt]);
+
+  if (!diffMatch) {
+    return (
+      <div className="whitespace-pre-wrap rounded-md border border-purple-200/60 bg-white/60 px-2.5 py-2 text-xs leading-relaxed text-gray-700 dark:border-purple-800/30 dark:bg-gray-800/40 dark:text-gray-300">
+        {prompt}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-purple-200/60 bg-white/60 px-2.5 py-2 text-xs leading-relaxed text-gray-700 dark:border-purple-800/30 dark:bg-gray-800/40 dark:text-gray-300">
+      {diffMatch.before.trim() && (
+        <div className="whitespace-pre-wrap">{diffMatch.before}</div>
+      )}
+      <DiffView diff={diffMatch.diff} />
+      {diffMatch.after.trim() && (
+        <div className="whitespace-pre-wrap">{diffMatch.after}</div>
       )}
     </div>
   );
