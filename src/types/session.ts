@@ -64,6 +64,7 @@ export interface BaseRecord {
   slug?: string
   isSidechain?: boolean
   userType?: string
+  agentId?: string
 }
 
 export interface UserRecord extends BaseRecord {
@@ -160,4 +161,6 @@ export interface ParsedSession {
   turnCount: number
   turns: ConversationTurn[]
   fileName: string
+  isSubAgent?: boolean
+  agentId?: string
 }

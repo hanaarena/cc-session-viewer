@@ -31,11 +31,25 @@ export function buildConversation(
   records: SessionRecord[],
   fileName: string,
 ): ParsedSession {
-  // Filter to conversation records, exclude sidechains
-  const conversationRecords = records.filter(
+  const allConversationRecords = records.filter(
     (r): r is UserRecord | AssistantRecord | SystemRecord =>
-      isConversationRecord(r) && !r.isSidechain,
+      isConversationRecord(r),
   )
+
+  const mainRecords = allConversationRecords.filter((r) => !r.isSidechain)
+  const isSubAgent =
+    mainRecords.length === 0 && allConversationRecords.length > 0
+  const conversationRecords = isSubAgent ? allConversationRecords : mainRecords
+
+  let agentId: string | undefined
+  if (isSubAgent) {
+    for (const r of conversationRecords) {
+      if (r.agentId) {
+        agentId = r.agentId
+        break
+      }
+    }
+  }
 
   // Sort by timestamp
   conversationRecords.sort(
@@ -192,6 +206,8 @@ export function buildConversation(
     turnCount: turns.length,
     turns,
     fileName,
+    isSubAgent: isSubAgent || undefined,
+    agentId,
   }
 }
 

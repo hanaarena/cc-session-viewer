@@ -90,6 +90,14 @@ export function SessionMeta({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          {session.isSubAgent && (
+            <span
+              className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+              title={session.agentId ? `agentId: ${session.agentId}` : undefined}
+            >
+              Sub-agent{session.agentId ? ` · ${session.agentId}` : ""}
+            </span>
+          )}
           {session.model && (
             <span className="rounded-full bg-purple-100 px-2 py-0.5 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
               {session.model}

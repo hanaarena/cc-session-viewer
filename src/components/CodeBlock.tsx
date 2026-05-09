@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react"
+import { useState } from "react"
 import { DiffView } from "./DiffView"
 import { detectDiff } from "@/lib/detect-diff"
 
@@ -12,34 +12,34 @@ export function CodeBlock({ content, maxLines = 500, className = "" }: CodeBlock
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const diffMatch = useMemo(() => detectDiff(content), [content])
+  const diffMatch = detectDiff(content)
 
-  const lineCount = useMemo(() => {
-    let count = 1
-    for (let i = 0; i < content.length; i++) {
-      if (content[i] === "\n") count++
-    }
-    return count
-  }, [content])
+  let lineCount = 1
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === "\n") lineCount++
+  }
 
   const truncated = !expanded && lineCount > maxLines
-  const displayContent = useMemo(() => {
-    if (!truncated) return content
+
+  let displayContent = content
+  if (truncated) {
     let newlinesSeen = 0
     for (let i = 0; i < content.length; i++) {
       if (content[i] === "\n") {
         newlinesSeen++
-        if (newlinesSeen === maxLines) return content.slice(0, i)
+        if (newlinesSeen === maxLines) {
+          displayContent = content.slice(0, i)
+          break
+        }
       }
     }
-    return content
-  }, [content, truncated, maxLines])
+  }
 
-  const handleCopy = useCallback(async () => {
+  const handleCopy = async () => {
     await navigator.clipboard.writeText(content)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }, [content])
+  }
 
   if (diffMatch) {
     return (

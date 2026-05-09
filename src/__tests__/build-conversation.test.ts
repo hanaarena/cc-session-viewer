@@ -49,7 +49,7 @@ describe("buildConversation", () => {
     expect(session.turns[1].role).toBe("assistant")
   })
 
-  it("filters out sidechain messages", () => {
+  it("filters out sidechain messages when main-chain records exist", () => {
     const records: SessionRecord[] = [
       makeUser({ timestamp: "2026-01-01T00:00:00Z", isSidechain: false }),
       makeAssistant({ timestamp: "2026-01-01T00:00:01Z", isSidechain: true }),
@@ -58,6 +58,27 @@ describe("buildConversation", () => {
 
     const session = buildConversation(records, "test.jsonl")
     expect(session.turns).toHaveLength(2)
+    expect(session.isSubAgent).toBeUndefined()
+  })
+
+  it("renders sub-agent transcripts when every record is a sidechain", () => {
+    const records: SessionRecord[] = [
+      makeUser({
+        timestamp: "2026-01-01T00:00:00Z",
+        isSidechain: true,
+        agentId: "ae02608",
+      }),
+      makeAssistant({
+        timestamp: "2026-01-01T00:00:01Z",
+        isSidechain: true,
+        agentId: "ae02608",
+      }),
+    ]
+
+    const session = buildConversation(records, "sub-agent.jsonl")
+    expect(session.turns).toHaveLength(2)
+    expect(session.isSubAgent).toBe(true)
+    expect(session.agentId).toBe("ae02608")
   })
 
   it("sorts by timestamp", () => {
