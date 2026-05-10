@@ -1,18 +1,18 @@
-import { useRef, useEffect, useState } from "react"
-import type { ParsedSession } from "@/types/session"
-import type { SearchMatch } from "@/hooks/use-search"
-import { formatDuration, formatTokens, formatTimestamp } from "@/lib/format"
+import { useRef, useEffect, useState } from "react";
+import type { ParsedSession } from "@/types/session";
+import type { SearchMatch } from "@/hooks/use-search";
+import { formatDuration, formatTokens, formatTimestamp } from "@/lib/format";
 
 interface SessionMetaProps {
-  session: ParsedSession
-  onBack: () => void
-  query: string
-  onQueryChange: (q: string) => void
-  matches: SearchMatch[]
-  activeMatchIndex: number
-  onSelectMatch: (index: number) => void
-  onNextMatch: () => void
-  onPrevMatch: () => void
+  session: ParsedSession;
+  onBack: () => void;
+  query: string;
+  onQueryChange: (q: string) => void;
+  matches: SearchMatch[];
+  activeMatchIndex: number;
+  onSelectMatch: (index: number) => void;
+  onNextMatch: () => void;
+  onPrevMatch: () => void;
 }
 
 export function SessionMeta({
@@ -26,9 +26,9 @@ export function SessionMeta({
   onNextMatch,
   onPrevMatch,
 }: SessionMetaProps) {
-  const [showDropdown, setShowDropdown] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [showDropdown, setShowDropdown] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -39,36 +39,36 @@ export function SessionMeta({
         inputRef.current &&
         !inputRef.current.contains(e.target as Node)
       ) {
-        setShowDropdown(false)
+        setShowDropdown(false);
       }
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   // Show dropdown when there are matches
   useEffect(() => {
     if (matches.length > 0 && query.trim()) {
-      setShowDropdown(true)
+      setShowDropdown(true);
     } else {
-      setShowDropdown(false)
+      setShowDropdown(false);
     }
-  }, [matches, query])
+  }, [matches, query]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      e.preventDefault()
+      e.preventDefault();
       if (e.shiftKey) {
-        onPrevMatch()
+        onPrevMatch();
       } else {
-        onNextMatch()
+        onNextMatch();
       }
     }
     if (e.key === "Escape") {
-      onQueryChange("")
-      inputRef.current?.blur()
+      onQueryChange("");
+      inputRef.current?.blur();
     }
-  }
+  };
 
   return (
     <div className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -78,7 +78,16 @@ export function SessionMeta({
           onClick={onBack}
           className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
@@ -93,7 +102,9 @@ export function SessionMeta({
           {session.isSubAgent && (
             <span
               className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-              title={session.agentId ? `agentId: ${session.agentId}` : undefined}
+              title={
+                session.agentId ? `agentId: ${session.agentId}` : undefined
+              }
             >
               Sub-agent{session.agentId ? ` · ${session.agentId}` : ""}
             </span>
@@ -109,13 +120,17 @@ export function SessionMeta({
             </span>
           )}
           {session.cwd && (
-            <span className="hidden max-w-[200px] truncate rounded-full bg-gray-100 px-2 py-0.5 sm:inline dark:bg-gray-800" title={session.cwd}>
+            <span
+              className="hidden max-w-[200px] truncate rounded-full bg-gray-100 px-2 py-0.5 sm:inline dark:bg-gray-800"
+              title={session.cwd}
+            >
               {session.cwd}
             </span>
           )}
-          <span>{session.turnCount} turns</span>
+          <span>{session.turnCount} rounds</span>
           <span>
-            {formatTokens(session.totalInputTokens)} in / {formatTokens(session.totalOutputTokens)} out
+            {formatTokens(session.totalInputTokens)} in /{" "}
+            {formatTokens(session.totalOutputTokens)} out
           </span>
           {session.startTime && session.endTime && (
             <span>{formatDuration(session.startTime, session.endTime)}</span>
@@ -126,7 +141,17 @@ export function SessionMeta({
       {/* Search row */}
       <div className="relative border-t border-gray-100 px-4 py-2 dark:border-gray-800">
         <div className="mx-auto flex max-w-3xl items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-gray-400 dark:text-gray-500">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="shrink-0 text-gray-400 dark:text-gray-500"
+          >
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
@@ -136,7 +161,9 @@ export function SessionMeta({
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => { if (matches.length > 0) setShowDropdown(true) }}
+            onFocus={() => {
+              if (matches.length > 0) setShowDropdown(true);
+            }}
             placeholder="Search messages..."
             className="min-w-0 flex-1 bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-100 dark:placeholder:text-gray-500"
           />
@@ -151,7 +178,16 @@ export function SessionMeta({
                     onClick={onPrevMatch}
                     className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <polyline points="18 15 12 9 6 15" />
                     </svg>
                   </button>
@@ -159,20 +195,40 @@ export function SessionMeta({
                     onClick={onNextMatch}
                     className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <polyline points="6 9 12 15 18 9" />
                     </svg>
                   </button>
                 </>
               )}
               {matches.length === 0 && (
-                <span className="text-xs text-gray-400 dark:text-gray-500">No results</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  No results
+                </span>
               )}
               <button
                 onClick={() => onQueryChange("")}
                 className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -191,13 +247,11 @@ export function SessionMeta({
               <button
                 key={match.turnIndex}
                 onClick={() => {
-                  onSelectMatch(i)
-                  setShowDropdown(false)
+                  onSelectMatch(i);
+                  setShowDropdown(false);
                 }}
                 className={`flex w-full items-start gap-3 px-4 py-2 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${
-                  i === activeMatchIndex
-                    ? "bg-blue-50 dark:bg-blue-900/20"
-                    : ""
+                  i === activeMatchIndex ? "bg-blue-50 dark:bg-blue-900/20" : ""
                 }`}
               >
                 <span
@@ -223,35 +277,38 @@ export function SessionMeta({
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function HighlightSnippet({ text, query }: { text: string; query: string }) {
-  if (!query.trim()) return <>{text}</>
+  if (!query.trim()) return <>{text}</>;
 
-  const parts: { text: string; highlight: boolean }[] = []
-  const lower = text.toLowerCase()
-  const q = query.toLowerCase()
-  let lastIndex = 0
+  const parts: { text: string; highlight: boolean }[] = [];
+  const lower = text.toLowerCase();
+  const q = query.toLowerCase();
+  let lastIndex = 0;
 
-  let idx = lower.indexOf(q, lastIndex)
+  let idx = lower.indexOf(q, lastIndex);
   while (idx !== -1) {
     if (idx > lastIndex) {
-      parts.push({ text: text.slice(lastIndex, idx), highlight: false })
+      parts.push({ text: text.slice(lastIndex, idx), highlight: false });
     }
-    parts.push({ text: text.slice(idx, idx + q.length), highlight: true })
-    lastIndex = idx + q.length
-    idx = lower.indexOf(q, lastIndex)
+    parts.push({ text: text.slice(idx, idx + q.length), highlight: true });
+    lastIndex = idx + q.length;
+    idx = lower.indexOf(q, lastIndex);
   }
   if (lastIndex < text.length) {
-    parts.push({ text: text.slice(lastIndex), highlight: false })
+    parts.push({ text: text.slice(lastIndex), highlight: false });
   }
 
   return (
     <>
       {parts.map((part, i) =>
         part.highlight ? (
-          <mark key={i} className="rounded bg-yellow-200 px-0.5 text-yellow-900 dark:bg-yellow-700/50 dark:text-yellow-200">
+          <mark
+            key={i}
+            className="rounded bg-yellow-200 px-0.5 text-yellow-900 dark:bg-yellow-700/50 dark:text-yellow-200"
+          >
             {part.text}
           </mark>
         ) : (
@@ -259,5 +316,5 @@ function HighlightSnippet({ text, query }: { text: string; query: string }) {
         ),
       )}
     </>
-  )
+  );
 }

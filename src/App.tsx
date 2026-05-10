@@ -7,6 +7,7 @@ import { SessionList } from "@/components/SessionList"
 import { MessageList } from "@/components/MessageList"
 import type { MessageListHandle } from "@/components/MessageList"
 import { SessionMeta } from "@/components/SessionMeta"
+import { SidePanel } from "@/components/SidePanel"
 
 type View = "landing" | "loading" | "list" | "viewer"
 
@@ -136,6 +137,7 @@ function SessionViewer({
 }) {
   const messageListRef = useRef<MessageListHandle>(null)
   const search = useSearch(session)
+  const [activeTurnIndex, setActiveTurnIndex] = useState(0)
 
   // Scroll to active match when it changes
   const scrollToActiveMatch = useCallback(() => {
@@ -161,6 +163,11 @@ function SessionViewer({
     search.prevMatch()
   }
 
+  const handleSelectTurn = useCallback((turnIndex: number) => {
+    setActiveTurnIndex(turnIndex)
+    messageListRef.current?.scrollToIndex(turnIndex)
+  }, [])
+
   return (
     <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-950">
       <SessionMeta
@@ -174,7 +181,20 @@ function SessionViewer({
         onNextMatch={handleNextMatch}
         onPrevMatch={handlePrevMatch}
       />
-      <MessageList ref={messageListRef} session={session} />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <SidePanel
+          session={session}
+          activeTurnIndex={activeTurnIndex}
+          onSelectTurn={handleSelectTurn}
+        />
+        <div className="min-w-0 flex-1">
+          <MessageList
+            ref={messageListRef}
+            session={session}
+            onActiveTurnIndexChange={setActiveTurnIndex}
+          />
+        </div>
+      </div>
     </div>
   )
 }
