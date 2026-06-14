@@ -8,6 +8,7 @@ import type {
   ToolResultContent,
   ToolUseBlock,
 } from "@/types/session"
+import { userContentToText } from "./parse-user-content"
 
 function isUserRecord(r: SessionRecord): r is UserRecord {
   return r.type === "user"
@@ -137,13 +138,26 @@ export function buildConversation(
         toolResults: toolResults.size > 0 ? toolResults : undefined,
       })
     } else if (isUserRecord(record)) {
-      // Skip user messages that are purely tool results (they're paired with assistant turns)
-      if (Array.isArray(record.message.content)) continue
+      const content = record.message.content
 
-      const text =
-        typeof record.message.content === "string"
-          ? record.message.content
-          : ""
+      // array content: render text/image blocks as a user turn, but skip arrays that are purely tool results
+      if (Array.isArray(content)) {
+        const hasImage = content.some((b) => b.type === "image")
+        const text = userContentToText(content)
+
+        if (!hasImage && !text.trim()) continue
+        if (!hasImage && isNoisyUserMessage(text)) continue
+
+        turns.push({
+          id: record.uuid,
+          role: "user",
+          timestamp: record.timestamp,
+          record,
+        })
+        continue
+      }
+
+      const text = typeof content === "string" ? content : ""
 
       // Skip meta-only messages with no meaningful text
       if (record.isMeta && !text.trim()) continue

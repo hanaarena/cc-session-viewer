@@ -11,6 +11,7 @@ import type {
   ParsedSession,
   ConversationTurn,
   AssistantRecord,
+  UserRecord,
 } from "@/types/session";
 import { MessageBubble } from "./MessageBubble";
 
@@ -30,7 +31,21 @@ interface MessageListProps {
 function estimateTurnHeight(turn: ConversationTurn): number {
   if (turn.role === "system") return 40;
 
-  if (turn.role === "user") return 80;
+  if (turn.role === "user") {
+    const content = (turn.record as UserRecord).message.content;
+    if (Array.isArray(content)) {
+      let h = 56;
+      for (const block of content) {
+        if (block.type === "image") {
+          h += 300;
+        } else if (block.type === "text") {
+          h += Math.max(24, Math.ceil(block.text.length / 80) * 20);
+        }
+      }
+      return Math.min(h, 900);
+    }
+    return 80;
+  }
 
   // Assistant: base + per-block estimate
   const record = turn.record as AssistantRecord;

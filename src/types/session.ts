@@ -45,7 +45,16 @@ export interface ToolResultContent {
   is_error?: boolean
 }
 
-export type UserContent = string | ToolResultContent[]
+export interface ImageBlock {
+  type: "image"
+  source:
+    | { type: "base64"; media_type: string; data: string }
+    | { type: "url"; url: string }
+}
+
+export type UserContentBlock = TextBlock | ImageBlock | ToolResultContent
+
+export type UserContent = string | UserContentBlock[]
 
 export interface UserMessage {
   role: "user"

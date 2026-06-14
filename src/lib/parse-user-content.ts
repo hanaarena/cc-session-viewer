@@ -1,3 +1,23 @@
+import type { UserContent, TextBlock } from "@/types/session"
+
+
+// Flatten user message content
+export function userContentToText(content: UserContent): string {
+  if (typeof content === "string") return content
+  return content
+    .filter((b): b is TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("\n\n")
+}
+
+export function hasDisplayableUserContent(content: UserContent): boolean {
+  if (typeof content === "string") return content.trim().length > 0
+  return content.some(
+    (b) =>
+      b.type === "image" || (b.type === "text" && b.text.trim().length > 0),
+  )
+}
+
 export interface ParsedUserContent {
   type: "text" | "command" | "task-notification"
   /** The display text or markdown content */

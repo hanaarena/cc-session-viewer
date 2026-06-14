@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import type { ParsedSession, ConversationTurn, UserRecord, AssistantRecord } from "@/types/session"
+import { userContentToText } from "@/lib/parse-user-content"
 
 export interface SearchMatch {
   turnIndex: number
@@ -21,8 +22,7 @@ export interface UseSearchResult {
 function getTurnText(turn: ConversationTurn): string {
   const record = turn.record
   if (turn.role === "user") {
-    const content = (record as UserRecord).message.content
-    return typeof content === "string" ? content : ""
+    return userContentToText((record as UserRecord).message.content)
   }
   if (turn.role === "assistant") {
     const msg = (record as AssistantRecord).message

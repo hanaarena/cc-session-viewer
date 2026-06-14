@@ -196,6 +196,61 @@ describe("buildConversation", () => {
     expect(userTurns).toHaveLength(1) // only the first real user message
   })
 
+  it("keeps user messages that contain text and image blocks", () => {
+    const records: SessionRecord[] = [
+      makeUser({
+        timestamp: "2026-01-01T00:00:00Z",
+        message: {
+          role: "user",
+          content: [
+            { type: "text", text: "why does this log show an error?" },
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+              },
+            },
+          ],
+        },
+      }),
+    ]
+
+    const session = buildConversation(records, "test.jsonl")
+    const userTurns = session.turns.filter((t) => t.role === "user")
+    expect(userTurns).toHaveLength(1)
+    expect(Array.isArray((userTurns[0].record as UserRecord).message.content)).toBe(true)
+  })
+
+  it("keeps image-only user messages but still skips pure tool-result messages", () => {
+    const records: SessionRecord[] = [
+      makeUser({
+        timestamp: "2026-01-01T00:00:00Z",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: { type: "base64", media_type: "image/png", data: "abc123" },
+            },
+          ],
+        },
+      }),
+      makeUser({
+        timestamp: "2026-01-01T00:00:01Z",
+        message: {
+          role: "user",
+          content: [{ tool_use_id: "tu1", type: "tool_result", content: "output" }],
+        },
+      }),
+    ]
+
+    const session = buildConversation(records, "test.jsonl")
+    const userTurns = session.turns.filter((t) => t.role === "user")
+    expect(userTurns).toHaveLength(1) // image kept, tool-result skipped
+  })
+
   it("extracts session metadata", () => {
     const records: SessionRecord[] = [
       makeUser({

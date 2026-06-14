@@ -5,6 +5,9 @@ import type {
   AssistantRecord,
   SystemRecord,
   AssistantContentBlock,
+  UserContentBlock,
+  TextBlock,
+  ImageBlock,
 } from "@/types/session";
 import { formatTimestamp } from "@/lib/format";
 import { parseUserContent } from "@/lib/parse-user-content";
@@ -37,9 +40,17 @@ export function MessageBubble({ turn }: MessageBubbleProps) {
   return null;
 }
 
+// Shared text styling for the blue user bubble.
+const USER_TEXT_CLASS =
+  "text-blue-900 [&_a]:text-blue-700 [&_a]:decoration-blue-400 [&_code]:bg-blue-200/60 [&_code]:text-blue-800 [&_strong]:text-blue-950 dark:text-blue-100 dark:[&_a]:text-blue-300 dark:[&_code]:bg-blue-800/40 dark:[&_code]:text-blue-200 dark:[&_strong]:text-white";
+
 function UserBubble({ record }: { record: UserRecord }) {
   const content = record.message.content;
-  if (typeof content !== "string") return null;
+
+  // Structured content (pasted images, multi-block text) arrives as an array.
+  if (Array.isArray(content)) {
+    return <UserBlocksBubble blocks={content} timestamp={record.timestamp} />;
+  }
 
   const parsed = parseUserContent(content);
 
@@ -137,10 +148,7 @@ function UserBubble({ record }: { record: UserRecord }) {
               isLong ? "max-h-[70vh] overflow-y-auto px-4 py-3" : "px-4 py-3"
             }
           >
-            <Markdown
-              content={parsed.text}
-              className="text-blue-900 [&_a]:text-blue-700 [&_a]:decoration-blue-400 [&_code]:bg-blue-200/60 [&_code]:text-blue-800 [&_strong]:text-blue-950 dark:text-blue-100 dark:[&_a]:text-blue-300 dark:[&_code]:bg-blue-800/40 dark:[&_code]:text-blue-200 dark:[&_strong]:text-white"
-            />
+            <Markdown content={parsed.text} className={USER_TEXT_CLASS} />
           </div>
         </div>
         {!isLong && (
@@ -150,6 +158,70 @@ function UserBubble({ record }: { record: UserRecord }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** User message whose content is a block array (text + pasted images). */
+function UserBlocksBubble({
+  blocks,
+  timestamp,
+}: {
+  blocks: UserContentBlock[];
+  timestamp: string;
+}) {
+  // tool_result blocks are shown with their paired assistant turn, not here.
+  const renderable = blocks.filter(
+    (b): b is TextBlock | ImageBlock =>
+      b.type === "text" || b.type === "image",
+  );
+  if (renderable.length === 0) return null;
+
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[85%]">
+        <div className="space-y-2 overflow-hidden rounded-2xl rounded-br-md bg-blue-100 px-4 py-3 shadow-sm dark:bg-blue-900/40">
+          {renderable.map((block, i) =>
+            block.type === "image" ? (
+              <ImageContent key={i} source={block.source} />
+            ) : (
+              <Markdown
+                key={i}
+                content={parseUserContent(block.text).text}
+                className={USER_TEXT_CLASS}
+              />
+            ),
+          )}
+        </div>
+        <p className="mt-1 text-right text-xs text-gray-400 dark:text-gray-600">
+          {formatTimestamp(timestamp)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Render an image content block (base64 data URL or remote URL), click to open full size. */
+function ImageContent({ source }: { source: ImageBlock["source"] }) {
+  const src =
+    source.type === "base64"
+      ? `data:${source.media_type};base64,${source.data}`
+      : source.url;
+
+  return (
+    <a
+      href={src}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block w-fit"
+      title="Open image in new tab"
+    >
+      <img
+        src={src}
+        alt="Attached image"
+        loading="lazy"
+        className="max-h-96 w-auto max-w-full rounded-lg border border-blue-200/70 object-contain transition-opacity hover:opacity-90 dark:border-blue-800/50"
+      />
+    </a>
   );
 }
 

@@ -5,7 +5,11 @@ import type {
   UserRecord,
   AssistantRecord,
 } from "@/types/session";
-import { parseUserContent } from "@/lib/parse-user-content";
+import {
+  parseUserContent,
+  userContentToText,
+  hasDisplayableUserContent,
+} from "@/lib/parse-user-content";
 import { formatTimestamp } from "@/lib/format";
 
 interface SidePanelProps {
@@ -30,9 +34,9 @@ interface MainTurn {
 function isMainTurn(turn: ConversationTurn): boolean {
   if (turn.role === "system") return false;
   if (turn.role === "user") {
-    const content = (turn.record as UserRecord).message.content;
-    if (typeof content !== "string") return false;
-    return content.trim().length > 0;
+    return hasDisplayableUserContent(
+      (turn.record as UserRecord).message.content,
+    );
   }
   if (turn.role === "assistant") {
     const blocks = (turn.record as AssistantRecord).message.content;
@@ -67,7 +71,7 @@ function describeTurn(
 ): Omit<MainTurn, "turnIndex" | "turn"> {
   if (turn.role === "user") {
     const content = (turn.record as UserRecord).message.content;
-    const raw = typeof content === "string" ? content : "";
+    const raw = userContentToText(content);
     const parsed = parseUserContent(raw);
     if (parsed.type === "command") {
       return {
@@ -83,7 +87,10 @@ function describeTurn(
         meta: parsed.taskStatus,
       };
     }
-    return { kind: "text", text: snippetFromMarkdown(parsed.text) };
+    const snippet = snippetFromMarkdown(parsed.text);
+    const hasImage =
+      Array.isArray(content) && content.some((b) => b.type === "image");
+    return { kind: "text", text: snippet || (hasImage ? "[image]" : "") };
   }
 
   // assistant
