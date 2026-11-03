@@ -4,9 +4,11 @@ import type {
   ConversationTurn,
   UserRecord,
   AssistantRecord,
+  SystemRecord,
 } from "@/types/session";
 import {
   parseUserContent,
+  parseLocalCommandOutput,
   userContentToText,
   hasDisplayableUserContent,
 } from "@/lib/parse-user-content";
@@ -22,21 +24,35 @@ interface MainTurn {
   /** Index in session.turns — used for scrollToIndex */
   turnIndex: number;
   turn: ConversationTurn;
-  kind: "text" | "command" | "task";
+  kind: "text" | "command" | "task" | "artifact";
   text: string;
   meta?: string;
 }
 
+/** Local slash command (/status, /artifacts, ...) stored as a system record. */
+function isLocalCommandTurn(turn: ConversationTurn): boolean {
+  if (turn.role !== "system") return false;
+  const record = turn.record as SystemRecord;
+  return (
+    record.subtype === "local_command" &&
+    parseUserContent(record.content ?? "").type === "command"
+  );
+}
+
 /**
- * "Main" turn = user message OR assistant message with non-empty text content.
- * Pure-tool-use assistant turns (Read/Bash/Grep/etc.) are excluded.
+ * "Main" turn = user message, local slash command, OR assistant message with
+ * non-empty text content. Pure-tool-use assistant turns (Read/Bash/Grep/etc.)
+ * are excluded.
  */
 function isMainTurn(turn: ConversationTurn): boolean {
-  if (turn.role === "system") return false;
+  if (turn.role === "system") return isLocalCommandTurn(turn);
   if (turn.role === "user") {
-    return hasDisplayableUserContent(
-      (turn.record as UserRecord).message.content,
-    );
+    const content = (turn.record as UserRecord).message.content;
+    // Unpaired local command output isn't something the user typed
+    if (typeof content === "string" && parseLocalCommandOutput(content)) {
+      return false;
+    }
+    return hasDisplayableUserContent(content);
   }
   if (turn.role === "assistant") {
     const blocks = (turn.record as AssistantRecord).message.content;
@@ -69,6 +85,15 @@ function snippetFromMarkdown(text: string, maxLen = 120): string {
 function describeTurn(
   turn: ConversationTurn,
 ): Omit<MainTurn, "turnIndex" | "turn"> {
+  if (turn.role === "system") {
+    // Only local slash commands reach here (see isMainTurn)
+    const parsed = parseUserContent((turn.record as SystemRecord).content ?? "");
+    return {
+      kind: "command",
+      text: parsed.commandName ?? "",
+      meta: parsed.commandArgs || undefined,
+    };
+  }
   if (turn.role === "user") {
     const content = (turn.record as UserRecord).message.content;
     const raw = userContentToText(content);
@@ -85,6 +110,12 @@ function describeTurn(
         kind: "task",
         text: parsed.taskSummary ?? "Task notification",
         meta: parsed.taskStatus,
+      };
+    }
+    if (parsed.type === "artifact-attached") {
+      return {
+        kind: "artifact",
+        text: parsed.artifactTitle || parsed.artifactUrl || "Artifact",
       };
     }
     const snippet = snippetFromMarkdown(parsed.text);
@@ -245,7 +276,8 @@ interface SidePanelItemProps {
 }
 
 function SidePanelItem({ item, active, onClick, ref }: SidePanelItemProps) {
-  const role = item.turn.role;
+  // Local slash commands are system records, but the user typed them
+  const role = item.turn.role === "system" ? "user" : item.turn.role;
   return (
     <button
       ref={ref}
@@ -311,6 +343,24 @@ function RoleDot({ role }: { role: ConversationTurn["role"] }) {
   );
 }
 
+/** Badges for special (non-plain-text) turn kinds. */
+const KIND_BADGES: Partial<
+  Record<MainTurn["kind"], { label: string; cls: string }>
+> = {
+  command: {
+    label: "cmd",
+    cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+  },
+  task: {
+    label: "task",
+    cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  },
+  artifact: {
+    label: "artifact",
+    cls: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+  },
+};
+
 function RoleBadge({
   role,
   kind,
@@ -318,24 +368,15 @@ function RoleBadge({
   role: ConversationTurn["role"];
   kind: MainTurn["kind"];
 }) {
+  const badge = KIND_BADGES[kind];
   const label =
-    kind === "command"
-      ? "cmd"
-      : kind === "task"
-        ? "task"
-        : role === "user"
-          ? "you"
-          : role === "assistant"
-            ? "AI"
-            : role;
+    badge?.label ??
+    (role === "user" ? "you" : role === "assistant" ? "AI" : role);
   const cls =
-    kind === "command"
-      ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
-      : kind === "task"
-        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-        : role === "user"
-          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+    badge?.cls ??
+    (role === "user"
+      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+      : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400");
   return (
     <span
       className={`shrink-0 rounded px-1 py-px text-[9px] font-medium uppercase tracking-wide ${cls}`}
