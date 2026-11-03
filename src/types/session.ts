@@ -145,6 +145,12 @@ export type SessionRecord =
   | SystemRecord
   | QueueOperationRecord
 
+// Output of a local slash command (<local-command-stdout> / <local-command-stderr>)
+export interface LocalCommandOutput {
+  stdout?: string
+  stderr?: string
+}
+
 // Processed conversation turn
 export interface ConversationTurn {
   id: string
@@ -156,6 +162,8 @@ export interface ConversationTurn {
     string,
     ToolResultContent & { toolUseResult?: UserRecord["toolUseResult"] }
   >
+  // For local slash-command turns (system/local_command): the paired output record
+  commandOutput?: LocalCommandOutput
 }
 
 export interface ParsedSession {

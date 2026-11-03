@@ -7,8 +7,13 @@ import type {
   ParsedSession,
   ToolResultContent,
   ToolUseBlock,
+  LocalCommandOutput,
 } from "@/types/session"
-import { userContentToText } from "./parse-user-content"
+import {
+  userContentToText,
+  parseUserContent,
+  parseLocalCommandOutput,
+} from "./parse-user-content"
 
 function isUserRecord(r: SessionRecord): r is UserRecord {
   return r.type === "user"
@@ -22,9 +27,11 @@ function isSystemRecord(r: SessionRecord): r is SystemRecord {
   return r.type === "system"
 }
 
+type ConversationRecord = UserRecord | AssistantRecord | SystemRecord
+
 function isConversationRecord(
   r: SessionRecord,
-): r is UserRecord | AssistantRecord | SystemRecord {
+): r is ConversationRecord {
   return isUserRecord(r) || isAssistantRecord(r) || isSystemRecord(r)
 }
 
@@ -90,6 +97,8 @@ export function buildConversation(
     return true
   })
 
+  const localCommands = pairLocalCommandOutputs(deduped)
+
   // Build turns and pair tool_use → tool_result
   const turns: ConversationTurn[] = []
 
@@ -138,6 +147,8 @@ export function buildConversation(
         toolResults: toolResults.size > 0 ? toolResults : undefined,
       })
     } else if (isUserRecord(record)) {
+      // Output records already attached to their command turn
+      if (localCommands.consumed.has(record.uuid)) continue
       const content = record.message.content
 
       // array content: render text/image blocks as a user turn, but skip arrays that are purely tool results
@@ -170,8 +181,11 @@ export function buildConversation(
         role: "user",
         timestamp: record.timestamp,
         record,
+        commandOutput: localCommands.outputs.get(record.uuid),
       })
     } else if (isSystemRecord(record)) {
+      // Output records already attached to their command turn
+      if (localCommands.consumed.has(record.uuid)) continue
       // Skip noisy system records
       if (isNoisySystemRecord(record)) continue
 
@@ -180,6 +194,7 @@ export function buildConversation(
         role: "system",
         timestamp: record.timestamp,
         record,
+        commandOutput: localCommands.outputs.get(record.uuid),
       })
     }
   }
@@ -223,6 +238,51 @@ export function buildConversation(
     isSubAgent: isSubAgent || undefined,
     agentId,
   }
+}
+
+/**
+ * Text of a record that can hold a local command invocation or its output:
+ * system `local_command` records (newer sessions) or user records (older ones).
+ */
+function localCommandText(r: ConversationRecord): string | undefined {
+  if (isSystemRecord(r)) return r.subtype === "local_command" ? r.content : undefined
+  if (isUserRecord(r)) return userContentToText(r.message.content)
+  return undefined
+}
+
+/**
+ * Local slash commands (/status, /artifacts, /copy, ...) are written as two
+ * records: the invocation (<command-name>...) and its output
+ * (<local-command-stdout>...), whose parentUuid points at the invocation.
+ * Newer sessions store both as system `local_command` records, older ones as
+ * user records. Map each invocation to its output, and collect the output
+ * records so they aren't rendered a second time on their own.
+ */
+function pairLocalCommandOutputs(records: ConversationRecord[]): {
+  outputs: Map<string, LocalCommandOutput>
+  consumed: Set<string>
+} {
+  const invocations = new Set<string>()
+  for (const r of records) {
+    const text = localCommandText(r)
+    // Same check the bubbles use to render a command, so paired output is always shown
+    if (text?.includes("<command-name>") && parseUserContent(text).type === "command") {
+      invocations.add(r.uuid)
+    }
+  }
+
+  const outputs = new Map<string, LocalCommandOutput>()
+  const consumed = new Set<string>()
+  for (const r of records) {
+    if (!r.parentUuid) continue
+    // Pair only once; any extra output record still renders standalone
+    if (!invocations.has(r.parentUuid) || outputs.has(r.parentUuid)) continue
+    const output = parseLocalCommandOutput(localCommandText(r) ?? "")
+    if (!output) continue
+    outputs.set(r.parentUuid, output)
+    consumed.add(r.uuid)
+  }
+  return { outputs, consumed }
 }
 
 const NOISY_USER_PATTERNS = [
