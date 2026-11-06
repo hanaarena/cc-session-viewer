@@ -524,6 +524,10 @@ function truncateAtBreak(text: string): string {
 
 const COLLAPSE_THRESHOLD = 800;
 
+// Whole-message copy; hidden while a code block/table with its own copy button is hovered
+const MESSAGE_COPY_BUTTON =
+  "absolute right-0 top-0 z-10 opacity-0 group-hover:opacity-100 group-has-[.inline-copy:hover]:invisible";
+
 function TextBlock({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
   const diffMatch = useMemo(() => detectDiff(text), [text]);
@@ -559,7 +563,7 @@ function TextBlock({ text }: { text: string }) {
         <CopyButton
           content={text}
           label="Copy markdown"
-          className="absolute right-0 top-0 z-10 opacity-0 group-hover:opacity-100"
+          className={MESSAGE_COPY_BUTTON}
         />
         <Markdown content={text} className="text-gray-800 dark:text-gray-200" />
       </div>
@@ -570,7 +574,7 @@ function TextBlock({ text }: { text: string }) {
     <div className="group relative">
       <CopyButton
         content={text}
-        className="absolute right-0 top-0 z-10 opacity-0 group-hover:opacity-100"
+        className={MESSAGE_COPY_BUTTON}
       />
       <Markdown
         content={truncated}
