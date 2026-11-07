@@ -55,6 +55,23 @@ export function SessionMeta({
     }
   }, [matches, query]);
 
+  const resumeCommand = `claude --resume ${session.fileName.replace(".jsonl", "")}`;
+  const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => () => clearTimeout(copiedTimerRef.current), []);
+
+  const handleCopyResume = async () => {
+    try {
+      await navigator.clipboard.writeText(resumeCommand);
+      setCopied(true);
+      clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // void
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -92,10 +109,19 @@ export function SessionMeta({
           </svg>
         </button>
 
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-            {session.fileName}
-          </h2>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCopyResume}
+            className="min-w-0 cursor-pointer truncate rounded px-1 text-left text-sm font-medium text-gray-900 transition-colors hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-800"
+          >
+            <code>{resumeCommand}</code>
+          </button>
+          {copied && (
+            <span className="shrink-0 text-xs text-green-600 dark:text-green-400">
+              Copied
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
