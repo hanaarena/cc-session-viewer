@@ -2,6 +2,8 @@ import { useRef, useEffect, useState } from "react";
 import type { ParsedSession } from "@/types/session";
 import type { SearchMatch } from "@/hooks/use-search";
 import { formatDuration, formatTokens, formatTimestamp } from "@/lib/format";
+import { LiveToggle } from "./LiveToggle";
+import type { LiveSessionState } from "@/hooks/use-live-session";
 
 interface SessionMetaProps {
   session: ParsedSession;
@@ -13,6 +15,8 @@ interface SessionMetaProps {
   onSelectMatch: (index: number) => void;
   onNextMatch: () => void;
   onPrevMatch: () => void;
+  /** Present when the session file can be followed for changes */
+  live?: LiveSessionState;
 }
 
 export function SessionMeta({
@@ -25,6 +29,7 @@ export function SessionMeta({
   onSelectMatch,
   onNextMatch,
   onPrevMatch,
+  live,
 }: SessionMetaProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -125,6 +130,14 @@ export function SessionMeta({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          {live?.canFollow && (
+            <LiveToggle
+              following={live.following}
+              onToggle={() => live.setFollowing(!live.following)}
+              lastModified={live.lastModified}
+              error={live.error}
+            />
+          )}
           {session.isSubAgent && (
             <span
               className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"

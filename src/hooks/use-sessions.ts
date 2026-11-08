@@ -1,25 +1,23 @@
 import { useState, useEffect } from "react"
-import type { ParsedSession } from "@/types/session"
-import { parseJsonlFile } from "@/lib/parse-jsonl"
-import { buildConversation } from "@/lib/build-conversation"
+import { SessionFile, type SessionSource } from "@/lib/session-file"
 
 interface UseSessionsResult {
-  sessions: ParsedSession[]
+  sessions: SessionFile[]
   loading: boolean
   error: string | null
   progress: number // 0-1 across all files
   currentFile: string
 }
 
-export function useSessions(files: File[]): UseSessionsResult {
-  const [sessions, setSessions] = useState<ParsedSession[]>([])
+export function useSessions(sources: SessionSource[]): UseSessionsResult {
+  const [sessions, setSessions] = useState<SessionFile[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const [currentFile, setCurrentFile] = useState("")
 
   useEffect(() => {
-    if (files.length === 0) {
+    if (sources.length === 0) {
       setSessions([])
       setLoading(false)
       setError(null)
@@ -36,31 +34,32 @@ export function useSessions(files: File[]): UseSessionsResult {
       setProgress(0)
       setSessions([])
 
-      const results: ParsedSession[] = []
+      const results: SessionFile[] = []
 
-      for (let i = 0; i < files.length; i++) {
+      for (let i = 0; i < sources.length; i++) {
         if (cancelled) return
 
-        const file = files[i]
-        setCurrentFile(file.name)
+        const source = sources[i]
+        setCurrentFile(source.name)
 
         try {
-          const records = await parseJsonlFile(file, (fileProgress) => {
+          const sessionFile = new SessionFile(source)
+          await sessionFile.sync((fileProgress) => {
             if (!cancelled) {
-              const overall = (i + fileProgress) / files.length
+              const overall = (i + fileProgress) / sources.length
               setProgress(overall)
             }
           })
 
           if (cancelled) return
 
-          if (records.length === 0) continue
+          if (sessionFile.recordCount === 0) continue
 
-          results.push(buildConversation(records, file.name))
+          results.push(sessionFile)
         } catch (e) {
           if (cancelled) return
           // Continue with other files, collect errors
-          console.warn(`Failed to parse ${file.name}:`, e)
+          console.warn(`Failed to parse ${source.name}:`, e)
         }
       }
 
@@ -80,7 +79,7 @@ export function useSessions(files: File[]): UseSessionsResult {
     return () => {
       cancelled = true
     }
-  }, [files])
+  }, [sources])
 
   return { sessions, loading, error, progress, currentFile }
 }

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useFileDrop } from "@/hooks/use-file-drop"
 import { useSessions } from "@/hooks/use-sessions"
 import { useSearch } from "@/hooks/use-search"
+import { useLiveSession } from "@/hooks/use-live-session"
+import { ACTIVE_WINDOW_MS, type SessionFile } from "@/lib/session-file"
 import { DropZone } from "@/components/DropZone"
 import { SessionList } from "@/components/SessionList"
 import { MessageList } from "@/components/MessageList"
@@ -12,17 +14,17 @@ import { SidePanel } from "@/components/SidePanel"
 type View = "landing" | "loading" | "list" | "viewer"
 
 function App() {
-  const { files, isDragOver, clearFiles, pickFiles } = useFileDrop()
-  const { sessions, loading, error, progress, currentFile } = useSessions(files)
+  const { sources, isDragOver, clearFiles, pickFiles } = useFileDrop()
+  const { sessions, loading, error, progress, currentFile } = useSessions(sources)
   const [view, setView] = useState<View>("landing")
   const [activeIndex, setActiveIndex] = useState(0)
 
   // React to file drops
   useEffect(() => {
-    if (files.length > 0) {
+    if (sources.length > 0) {
       setView("loading")
     }
-  }, [files])
+  }, [sources])
 
   // React to parsing completion
   useEffect(() => {
@@ -74,9 +76,9 @@ function App() {
               "Preparing..."
             )}
           </p>
-          {files.length > 1 && (
+          {sources.length > 1 && (
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-600">
-              {Math.round(progress * 100)}% ({Math.min(Math.floor(progress * files.length) + 1, files.length)} of {files.length} files)
+              {Math.round(progress * 100)}% ({Math.min(Math.floor(progress * sources.length) + 1, sources.length)} of {sources.length} files)
             </p>
           )}
         </div>
@@ -112,7 +114,8 @@ function App() {
   if (view === "list") {
     return (
       <SessionList
-        sessions={sessions}
+        // Read at render time: followed sessions may have grown since loading
+        sessions={sessions.map((s) => s.session)}
         onSelect={handleSelectSession}
         onBack={handleBack}
       />
@@ -122,34 +125,37 @@ function App() {
   // Viewer
   const activeSession = sessions[activeIndex]
   if (view === "viewer" && activeSession) {
-    return <SessionViewer session={activeSession} onBack={handleBack} />
+    return <SessionViewer key={activeIndex} file={activeSession} onBack={handleBack} />
   }
 
   return null
 }
 
 function SessionViewer({
-  session,
+  file,
   onBack,
 }: {
-  session: import("@/types/session").ParsedSession
+  file: SessionFile
   onBack: () => void
 }) {
   const messageListRef = useRef<MessageListHandle>(null)
+  const live = useLiveSession(file)
+  const { session } = live
   const search = useSearch(session)
   const [activeTurnIndex, setActiveTurnIndex] = useState(0)
+  // An actively written session opens at the latest turn
+  const [startAtEnd] = useState(
+    () => file.canFollow && Date.now() - file.lastModified < ACTIVE_WINDOW_MS,
+  )
 
-  // Scroll to active match when it changes
-  const scrollToActiveMatch = useCallback(() => {
-    const match = search.matches[search.activeMatchIndex]
-    if (match) {
-      messageListRef.current?.scrollToIndex(match.turnIndex)
-    }
-  }, [search.matches, search.activeMatchIndex])
-
+  // Scroll to the active match when it changes. Keyed on the match's turn
+  // index rather than the matches array, which is rebuilt on every live update.
+  const activeMatchTurnIndex = search.matches[search.activeMatchIndex]?.turnIndex
   useEffect(() => {
-    scrollToActiveMatch()
-  }, [scrollToActiveMatch])
+    if (activeMatchTurnIndex !== undefined) {
+      messageListRef.current?.scrollToIndex(activeMatchTurnIndex)
+    }
+  }, [activeMatchTurnIndex, search.activeMatchIndex, search.debouncedQuery])
 
   const handleSelectMatch = (index: number) => {
     search.setActiveMatchIndex(index)
@@ -180,6 +186,7 @@ function SessionViewer({
         onSelectMatch={handleSelectMatch}
         onNextMatch={handleNextMatch}
         onPrevMatch={handlePrevMatch}
+        live={live}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <SidePanel
@@ -192,6 +199,8 @@ function SessionViewer({
             ref={messageListRef}
             session={session}
             onActiveTurnIndexChange={setActiveTurnIndex}
+            follow={live.following}
+            startAtEnd={startAtEnd}
           />
         </div>
       </div>
