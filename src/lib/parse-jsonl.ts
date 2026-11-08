@@ -1,69 +1,94 @@
 import type { SessionRecord } from "@/types/session"
 
-export async function parseJsonlFile(
-  file: File,
-  onProgress?: (percent: number) => void,
-): Promise<SessionRecord[]> {
-  const records: SessionRecord[] = []
+/**
+ * Incremental JSONL reader. Remembers how many bytes of the file it has
+ * consumed, so calling `read` again with a newer snapshot of the same file
+ * only parses the lines appended since.
+ */
+export class JsonlTail {
+  records: SessionRecord[] = []
+  /** Bytes of the file consumed so far */
+  offset = 0
+  /** Bumped whenever `records` changes */
+  version = 0
+  private pending = "" // incomplete trailing line
+  private decoder = new TextDecoder()
 
-  if (typeof file.stream === "function") {
-    // Streaming parse — avoids loading entire file as a single string
-    const stream = file.stream()
-    const reader = stream.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ""
-    let bytesRead = 0
+  /**
+   * Parse whatever `file` holds past `offset`. A file smaller than what was
+   * already read was truncated or replaced, so it is re-read from the start.
+   */
+  async read(file: Blob, onProgress?: (percent: number) => void): Promise<void> {
+    if (file.size < this.offset) this.reset()
 
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      bytesRead += value.byteLength
-      buffer += decoder.decode(value, { stream: true })
-
-      const lines = buffer.split("\n")
-      buffer = lines.pop()! // keep incomplete last line in buffer
-
-      for (const line of lines) {
-        if (line.trim()) {
-          try {
-            records.push(JSON.parse(line))
-          } catch {
-            // skip malformed lines
-          }
+    const start = this.offset
+    const total = file.size - start
+    if (total > 0) {
+      const blob = file.slice(start, file.size)
+      if (typeof blob.stream === "function") {
+        // Stream so large files aren't held in memory as one string
+        const reader = blob.stream().getReader()
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          this.feed(value)
+          onProgress?.((this.offset - start) / total)
         }
+      } else {
+        this.feed(new Uint8Array(await blob.arrayBuffer()))
       }
-
-      onProgress?.(bytesRead / file.size)
+      this.flushPending()
     }
+    onProgress?.(1)
+  }
 
-    // handle final line
-    if (buffer.trim()) {
+  reset() {
+    this.records = []
+    this.offset = 0
+    this.pending = ""
+    this.decoder = new TextDecoder()
+    this.version++
+  }
+
+  private feed(chunk: Uint8Array) {
+    this.offset += chunk.byteLength
+    // stream: true keeps a multi-byte character split across chunks intact
+    this.pending += this.decoder.decode(chunk, { stream: true })
+    const lines = this.pending.split("\n")
+    this.pending = lines.pop()!
+    for (const line of lines) {
+      if (!line.trim()) continue
       try {
-        records.push(JSON.parse(buffer))
+        this.records.push(JSON.parse(line))
+        this.version++
       } catch {
-        // skip malformed
-      }
-    }
-  } else {
-    // Fallback for browsers without File.stream()
-    const text = await file.text()
-    const lines = text.split("\n")
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim()
-      if (line) {
-        try {
-          records.push(JSON.parse(line))
-        } catch {
-          // skip malformed lines
-        }
-      }
-      if (i % 500 === 0) {
-        onProgress?.(i / lines.length)
+        // skip malformed lines
       }
     }
   }
 
-  onProgress?.(1)
-  return records
+  /**
+   * A last line without "\n" is either still being written or the file has
+   * no trailing newline. A cut-off JSON object never parses, so accept the
+   * line only if it does; otherwise keep it until the rest arrives.
+   */
+  private flushPending() {
+    if (!this.pending.trim()) return
+    try {
+      this.records.push(JSON.parse(this.pending))
+      this.pending = ""
+      this.version++
+    } catch {
+      // wait for the rest of the line
+    }
+  }
+}
+
+export async function parseJsonlFile(
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<SessionRecord[]> {
+  const tail = new JsonlTail()
+  await tail.read(file, onProgress)
+  return tail.records
 }

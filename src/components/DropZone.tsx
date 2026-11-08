@@ -1,6 +1,11 @@
+// File handles (needed to re-read a file as it grows) are Chromium-only
+const supportsLiveFollow =
+  typeof window !== "undefined" &&
+  typeof window.showOpenFilePicker === "function";
+
 interface DropZoneProps {
-  isDragOver: boolean
-  onPickFiles: () => void
+  isDragOver: boolean;
+  onPickFiles: () => void;
 }
 
 export function DropZone({ isDragOver, onPickFiles }: DropZoneProps) {
@@ -34,9 +39,22 @@ export function DropZone({ isDragOver, onPickFiles }: DropZoneProps) {
             CC Session Viewer
           </h1>
           <p className="mt-2 text-gray-500 dark:text-gray-400">
-            Drop <code className="rounded bg-gray-200 px-1.5 py-0.5 text-sm dark:bg-gray-800">.jsonl</code> session files here
+            Drop{" "}
+            <code className="rounded bg-gray-200 px-1.5 py-0.5 text-sm dark:bg-gray-800">
+              .jsonl
+            </code>{" "}
+            session files here
           </p>
         </div>
+        <p className="max-w-sm text-center text-xs leading-relaxed text-gray-400 dark:text-gray-500">
+          Sessions live in{" "}
+          <code className="rounded bg-gray-200 px-1 py-0.5 dark:bg-gray-800">
+            ~/.claude/projects
+          </code>
+          {supportsLiveFollow && (
+            <> Open a running session to watch it update live.</>
+          )}
+        </p>
         <button
           onClick={onPickFiles}
           className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
@@ -45,5 +63,5 @@ export function DropZone({ isDragOver, onPickFiles }: DropZoneProps) {
         </button>
       </div>
     </div>
-  )
+  );
 }

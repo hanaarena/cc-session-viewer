@@ -3,6 +3,7 @@ import {
   useCallback,
   useState,
   useEffect,
+  useLayoutEffect,
   useImperativeHandle,
   forwardRef,
 } from "react";
@@ -22,6 +23,17 @@ export interface MessageListHandle {
 interface MessageListProps {
   session: ParsedSession;
   onActiveTurnIndexChange?: (index: number) => void;
+  /** Live mode: stay pinned to the bottom as turns arrive (when already there) */
+  follow?: boolean;
+  /** Open scrolled to the latest turn instead of the first */
+  startAtEnd?: boolean;
+}
+
+/** Within this many px of the bottom counts as "at the bottom" */
+const BOTTOM_THRESHOLD = 80;
+
+function isAtBottom(el: HTMLElement): boolean {
+  return el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD;
 }
 
 /**
@@ -69,9 +81,19 @@ function estimateTurnHeight(turn: ConversationTurn): number {
 }
 
 export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
-  function MessageList({ session, onActiveTurnIndexChange }, ref) {
+  function MessageList(
+    { session, onActiveTurnIndexChange, follow = false, startAtEnd = false },
+    ref,
+  ) {
     const parentRef = useRef<HTMLDivElement>(null);
     const [showBackToTop, setShowBackToTop] = useState(false);
+    // Pinned = keep the bottom in view as content grows (tail -f). The ref is
+    // read by the scroll logic, the state drives the "new turns" pill.
+    const pinnedRef = useRef(startAtEnd);
+    const [pinned, setPinnedState] = useState(startAtEnd);
+    const lastScrollTopRef = useRef(0);
+    // Turn count the user has seen while pinned; the rest are "new"
+    const [seenTurnCount, setSeenTurnCount] = useState(session.turns.length);
     const rowRefs = useRef<Map<number, HTMLDivElement>>(new Map());
     const observerRef = useRef<ResizeObserver | null>(null);
     const lastActiveIndexRef = useRef<number>(-1);
@@ -192,6 +214,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         }
       };
 
+      // Pin on reaching the bottom; unpin only when the user scrolls up.
+      // Content growing below doesn't move scrollTop, so it never unpins.
+      const updatePinned = () => {
+        const top = el.scrollTop;
+        const scrolledUp = top < lastScrollTopRef.current - 1;
+        lastScrollTopRef.current = top;
+        const next = isAtBottom(el) ? true : scrolledUp ? false : null;
+        if (next !== null && next !== pinnedRef.current) {
+          pinnedRef.current = next;
+          setPinnedState(next);
+        }
+      };
+
       // Emit initial active turn after layout
       reportActive();
 
@@ -200,6 +235,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         if (!ticking) {
           requestAnimationFrame(() => {
             setShowBackToTop(el.scrollTop > 600);
+            updatePinned();
             reportActive();
             ticking = false;
           });
@@ -207,6 +243,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         }
       };
 
+      // Initial check: a session that fits on screen starts at the bottom
+      handleScroll();
       el.addEventListener("scroll", handleScroll, { passive: true });
       return () => el.removeEventListener("scroll", handleScroll);
     }, [virtualizer, onActiveTurnIndexChange]);
@@ -214,6 +252,31 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
     const scrollToTop = useCallback(() => {
       parentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     }, []);
+
+    const scrollToBottom = useCallback(() => {
+      const el = parentRef.current;
+      if (!el) return;
+      pinnedRef.current = true;
+      setPinnedState(true);
+      el.scrollTop = el.scrollHeight;
+    }, []);
+
+    const turnCount = session.turns.length;
+    const totalSize = virtualizer.getTotalSize();
+
+    // Keep the bottom in view while pinned: new turns, a growing last turn and
+    // rows measured taller than estimated all change the total size.
+    useLayoutEffect(() => {
+      const el = parentRef.current;
+      if (!el || !pinnedRef.current || !(follow || startAtEnd)) return;
+      el.scrollTop = el.scrollHeight;
+    }, [follow, startAtEnd, totalSize, turnCount]);
+
+    // Everything is "seen" while pinned (derived state, adjusted during render)
+    if (pinned && seenTurnCount !== turnCount) {
+      setSeenTurnCount(turnCount);
+    }
+    const unseenTurns = follow && !pinned ? turnCount - seenTurnCount : 0;
 
     return (
       <div ref={parentRef} className="relative h-full overflow-y-auto">
@@ -238,6 +301,28 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
             );
           })}
         </div>
+
+        {/* New turns arrived while scrolled up */}
+        {unseenTurns > 0 && (
+          <button
+            onClick={scrollToBottom}
+            className="fixed bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-blue-600 px-3.5 py-2 text-xs font-medium text-white shadow-lg transition-all hover:bg-blue-500 active:scale-95"
+          >
+            {unseenTurns} new {unseenTurns === 1 ? "turn" : "turns"}
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        )}
 
         {/* Back to top button */}
         {showBackToTop && (
