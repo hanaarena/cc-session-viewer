@@ -281,7 +281,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
     return (
       <div ref={parentRef} className="relative h-full overflow-y-auto">
         <div
-          className="relative mx-auto w-full max-w-5xl text-base"
+          className="relative mx-auto w-full max-w-5xl text-base mb-4"
           style={{ height: virtualizer.getTotalSize() }}
         >
           {virtualizer.getVirtualItems().map((virtualRow) => {
